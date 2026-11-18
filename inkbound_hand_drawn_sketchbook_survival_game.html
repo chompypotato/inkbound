@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inkbound: Field Notes of the Wild</title>
+  <!-- PaperCSS via CDN for authentic hand-drawn borders, buttons, and sketchbook cards -->
+  <link rel="stylesheet" href="https://unpkg.com/papercss@1.9.2/dist/paper.min.css" />
+  <!-- Hand-lettered Google Fonts for sketchbook immersion -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Patrick+Hand&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="inkbound_hand_drawn_sketchbook_survival_game.css" />
+</head>
+<body>
+  <!-- Fullscreen Hand-Drawn Sketchbook Canvas -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- Low Health / Cold Inked Vignette -->
+  <div id="danger-vignette"></div>
+
+  <!-- Seamless Aged Parchment Grain Overlay -->
+  <div id="paper-overlay"></div>
+
+  <!-- Floating Field Note Toasts -->
+  <div id="toast-stack"></div>
+
+  <!-- Hand-Drawn Sketchbook Title Screen -->
+  <div id="title-screen">
+    <div class="title-folio">
+      <div class="title-folio-inner">
+        <div class="title-emblem" data-icon="compass" data-size="42"></div>
+        <h1 class="sketch-title" style="margin:4px 0 6px 0; font-size:2.35rem; line-height:1.1;">
+          Inkbound
+        </h1>
+        <p style="margin:0 auto; max-width:420px; font-size:1rem; color:var(--ink-muted); line-height:1.4;">
+          Complete Tier I, then find the three biome shrines and offer Aether Crystals to summon their guardians.
+        </p>
+
+        <div class="title-actions">
+          <button class="paper-btn btn-success" id="btn-title-continue" style="display:none; justify-content:center; align-items:center; gap:8px;">
+            <span data-icon="book" data-size="20"></span>
+            <span id="btn-title-continue-text">Continue Expedition</span>
+          </button>
+          <button class="paper-btn btn-secondary" id="btn-title-new" style="justify-content:center; align-items:center; gap:8px;">
+            <span data-icon="quill" data-size="20"></span>
+            <span id="btn-title-new-text">Begin New Expedition</span>
+          </button>
+          <button class="paper-btn" id="btn-title-tutorial" style="justify-content:center; align-items:center; gap:8px;">
+            <span data-icon="sprout" data-size="20"></span>
+            <span>Field Tutorial</span>
+          </button>
+          <button class="paper-btn btn-mini" id="btn-title-guide" style="justify-content:center; margin-top:2px;">
+            <span data-icon="compass" data-size="18"></span>
+            <span>Controls &amp; Survival Manual</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Sketchbook HUD -->
+  <div id="hud-layer">
+    <!-- Top Bar -->
+    <div class="hud-top">
+      <div>
+        <div class="sketch-panel hud-interactive status-pills">
+          <span class="badge secondary" id="hud-day">Day 1</span>
+          <span class="badge warning" id="hud-tier">Tier I: Flint</span>
+          <span class="badge" id="hud-time" style="display:inline-flex; align-items:center; gap:4px;">
+            <span id="hud-time-icon" data-icon="sun" data-size="16"></span>
+            <span id="hud-time-text">Morning</span>
+          </span>
+          <span class="badge success" id="hud-biome">Sunlit Meadow</span>
+          <span class="badge secondary" id="hud-weather">Clear Skies</span>
+          <span class="badge danger" id="hud-objective">Guardians: 0/3</span>
+          <span id="hud-station-badges" style="display:flex; gap:4px;"></span>
+        </div>
+
+        <!-- Interactive Step-by-Step Field Tutorial Card -->
+        <div id="tutorial-card" class="hidden">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px dashed var(--ink-primary); padding-bottom:4px; margin-bottom:6px;">
+            <strong style="display:inline-flex; align-items:center; gap:5px; font-size:0.95rem;">
+              <span data-icon="quill" data-size="16"></span>
+              <span id="tut-step-title">Field Training</span>
+            </strong>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <div class="tut-dots" id="tut-dots"></div>
+              <button class="paper-btn btn-mini" id="btn-skip-tutorial" style="padding:1px 6px; font-size:0.78rem;" title="Dismiss Tutorial">Skip</button>
+            </div>
+          </div>
+          <div id="tut-step-desc" style="font-size:0.94rem; line-height:1.35; color:var(--ink-primary);"></div>
+          <div id="tut-step-hint" style="font-size:0.84rem; color:var(--ink-amber); font-weight:bold; margin-top:4px;"></div>
+        </div>
+      </div>
+
+      <div class="top-actions hud-interactive">
+        <button class="paper-btn btn-mini" id="btn-open-craft" title="Crafting &amp; Backpack (C)">
+          <span data-icon="book" data-size="18"></span>
+          <span>Craft &amp; Bag [C]</span>
+        </button>
+        <button class="paper-btn btn-mini" id="btn-open-journal" title="Field Guide &amp; Save">
+          <span data-icon="compass" data-size="18"></span>
+          <span>Guide</span>
+        </button>
+        <button class="paper-btn btn-mini" id="btn-toggle-audio" title="Toggle Sound">
+          <span id="audio-icon-wrap" data-icon="sound_on" data-size="18"></span>
+        </button>
+        <canvas id="minimapCanvas" width="112" height="112" title="Cartographer's Radar"></canvas>
+      </div>
+    </div>
+
+    <!-- Bottom Bar -->
+    <div class="hud-bottom">
+      <!-- Survival Vitals -->
+      <div class="sketch-panel hud-interactive vitals-card">
+        <div class="vital-row">
+          <span class="vital-label" style="color:var(--ink-crimson);">
+            <span data-icon="heart" data-size="16"></span> Health
+          </span>
+          <div class="ink-bar-track"><div class="ink-bar-fill" id="bar-hp" style="background-color:#b53839;"></div></div>
+          <span id="val-hp" style="width:28px; text-align:right; font-weight:bold;">100</span>
+        </div>
+        <div class="vital-row">
+          <span class="vital-label" style="color:var(--ink-amber);">
+            <span data-icon="cooked_meat" data-size="16"></span> Hunger
+          </span>
+          <div class="ink-bar-track"><div class="ink-bar-fill" id="bar-hunger" style="background-color:#c97a2b;"></div></div>
+          <span id="val-hunger" style="width:28px; text-align:right; font-weight:bold;">100</span>
+        </div>
+        <div class="vital-row">
+          <span class="vital-label" style="color:var(--ink-forest);">
+            <span data-icon="bolt" data-size="16"></span> Stamina
+          </span>
+          <div class="ink-bar-track"><div class="ink-bar-fill" id="bar-stamina" style="background-color:#488253;"></div></div>
+          <span id="val-stamina" style="width:28px; text-align:right; font-weight:bold;">100</span>
+        </div>
+        <div class="vital-row">
+          <span class="vital-label" style="color:var(--ink-cobalt);">
+            <span data-icon="flame" data-size="16"></span> Warmth
+          </span>
+          <div class="ink-bar-track"><div class="ink-bar-fill" id="bar-warmth" style="background-color:#3a7ca5;"></div></div>
+          <span id="val-warmth" style="width:28px; text-align:right; font-weight:bold;">100</span>
+        </div>
+      </div>
+
+      <!-- Hotbar & Active Item Hint -->
+      <div class="hotbar-wrap hud-interactive">
+        <div class="sketch-panel boss-fight-panel" id="boss-fight-hud" hidden>
+          <strong id="boss-fight-name"></strong>
+          <div class="boss-health-track"><div class="boss-health-fill" id="boss-health-fill"></div></div>
+          <small id="boss-fight-tell"></small>
+        </div>
+        <div class="active-item-caption" id="active-item-label" style="display:inline-flex; align-items:center; gap:6px;">
+          Bare Hands — Click to Harvest / Attack • [Space] Dash
+        </div>
+        <div class="sketch-panel hotbar-grid" id="hotbar-slots"></div>
+      </div>
+
+      <!-- Context Prompt -->
+      <div class="sketch-panel hud-interactive" style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
+        <div id="context-prompt" style="font-size:0.92rem; font-weight:bold; color:var(--ink-muted);">
+          [LMB] Swing • [RMB] Eat/Cancel • [E] Interact
+        </div>
+        <div id="attack-cooldown-status" style="font-size:0.82rem; font-weight:bold; color:var(--ink-forest);">Attack ready</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Crafting & Backpack Sketchbook Modal -->
+  <div class="sketch-modal-backdrop" id="modal-craft">
+    <div class="sketch-book-modal">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px dashed var(--ink-primary); padding-bottom:8px;">
+        <div>
+          <h3 class="sketch-title" style="margin:0; display:flex; align-items:center; gap:8px;">
+            <span data-icon="book" data-size="24"></span>
+            <span>Field Sketchbook &amp; Crafting</span>
+          </h3>
+          <small id="station-status-text">Stand near a Workbench for Tier 2/3 recipes, or Campfire to cook &amp; smelt.</small>
+        </div>
+        <button class="paper-btn btn-mini btn-danger" id="btn-close-craft">
+          <span data-icon="close" data-size="15"></span>
+          <span>Close [C]</span>
+        </button>
+      </div>
+
+      <!-- Inventory Section -->
+      <div style="margin-top:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <strong>Satchel &amp; Hotbar (Slots 1–8 are Hotbar; Click item to Move/Swap)</strong>
+          <small id="selected-swap-hint" style="color:var(--ink-amber); font-weight:bold;"></small>
+        </div>
+        <div class="backpack-grid" id="backpack-slots"></div>
+      </div>
+
+      <!-- Expedition Progression Milestone Tracker -->
+      <div id="progression-banner" style="margin-top:10px; padding:10px 12px; background:#f5efe3; border:2px dashed var(--ink-primary); border-radius:12px 4px 10px 5px;"></div>
+
+      <!-- Tier Filter Tabs -->
+      <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; border-top:2px dashed var(--ink-primary); padding-top:10px;">
+        <button class="paper-btn btn-mini craft-tab active" data-tier="all">All Recipes</button>
+        <button class="paper-btn btn-mini craft-tab" data-tier="1">Tier I: Flint &amp; Wood</button>
+        <button class="paper-btn btn-mini craft-tab" data-tier="2">Tier II: Forged Iron</button>
+        <button class="paper-btn btn-mini craft-tab" data-tier="3">Tier III: Alchemical</button>
+        <button class="paper-btn btn-mini craft-tab" data-tier="structure">Structures</button>
+      </div>
+
+      <div class="craft-grid" id="craft-recipes-grid"></div>
+    </div>
+  </div>
+
+  <!-- Structure Interaction Modal (Campfire / Storage Chest) -->
+  <div class="sketch-modal-backdrop" id="modal-structure">
+    <div class="sketch-book-modal" style="max-width:620px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px dashed var(--ink-primary); padding-bottom:8px;">
+        <h3 class="sketch-title" id="struct-modal-title" style="margin:0; display:flex; align-items:center; gap:8px;">Campfire</h3>
+        <button class="paper-btn btn-mini btn-danger" id="btn-close-struct">
+          <span data-icon="close" data-size="15"></span>
+          <span>Close</span>
+        </button>
+      </div>
+      <div id="struct-modal-body" style="margin-top:12px;"></div>
+    </div>
+  </div>
+
+  <!-- Field Guide & Save Modal -->
+  <div class="sketch-modal-backdrop" id="modal-journal">
+    <div class="sketch-book-modal" style="max-width:640px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px dashed var(--ink-primary); padding-bottom:8px;">
+        <h3 class="sketch-title" style="margin:0; display:flex; align-items:center; gap:8px;">
+          <span data-icon="compass" data-size="24"></span>
+          <span>Field Guide</span>
+        </h3>
+        <button class="paper-btn btn-mini btn-danger" id="btn-close-journal">
+          <span data-icon="close" data-size="15"></span>
+          <span>Close</span>
+        </button>
+      </div>
+      <div style="margin-top:10px; line-height:1.45;">
+        <p>Complete Tier I, then find each guardian shrine and sacrifice an Aether Crystal to summon its guardian. Gather supplies, craft gear, and use fires or warm equipment to survive cold nights.</p>
+        <button class="paper-btn btn-mini btn-secondary" id="btn-open-tutorial-from-guide">
+          <span data-icon="book" data-size="16"></span>
+          <span>Open Field Tutorial</span>
+        </button>
+        <ul>
+          <li><strong>Tier I (Flint &amp; Wood):</strong> Craft Flint Tools, Ash Spear, Hand Torch, Campfire, Timber Walls, Storage Chest, and Field Workbench.</li>
+          <li><strong>Tier II (Forged Iron):</strong> Stand beside a <em>Field Workbench</em> to forge Iron Tools, Tempered Blade, Yew Shortbow, and Masonry Walls.</li>
+          <li><strong>Tier III (Alchemical):</strong> Venture into the <em>Rocky Highlands</em> &amp; <em>Shadow Mire</em> for Aether Crystals to craft Alchemical Lanterns, Clockwork Snares, and Aether Beacons.</li>
+          <li><strong>Controls:</strong> <code>WASD / Arrows</code> Move • <code>Space</code> Dodge Roll • <code>Left Click</code> Swing/Shoot/Place • <code>Right Click</code> Eat Food / Cancel • <code>E</code> Interact • <code>1-8</code> Hotbar • <code>C</code> Craft &amp; Satchel.</li>
+        </ul>
+        <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; padding-top:10px; border-top:2px dashed var(--ink-primary); align-items:center; justify-content:space-between;">
+          <span id="save-status-label" style="font-weight:bold; color:var(--ink-forest);">Auto-save active.</span>
+          <div style="display:flex; flex-wrap:wrap; gap:8px;">
+            <button class="paper-btn btn-mini" id="btn-replay-tutorial">
+              <span data-icon="sprout" data-size="16"></span>
+              <span>Replay Tutorial</span>
+            </button>
+            <button class="paper-btn btn-mini btn-success" id="btn-manual-save">
+              <span data-icon="save" data-size="16"></span>
+              <span>Save Now</span>
+            </button>
+            <button class="paper-btn btn-mini btn-danger" id="btn-ask-reset">
+              <span data-icon="trash" data-size="16"></span>
+              <span>New World</span>
+            </button>
+          </div>
+        </div>
+        <div id="reset-confirm-box" style="display:none; margin-top:10px; padding:10px; background:#fbeaea; border:2px solid var(--ink-crimson); border-radius:8px;">
+          <strong>Erase current expedition and generate a fresh sketchbook world?</strong>
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <button class="paper-btn btn-mini btn-danger" id="btn-confirm-reset">Yes, Start Fresh</button>
+            <button class="paper-btn btn-mini" id="btn-cancel-reset">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sketch-modal-backdrop" id="modal-tutorial">
+    <div class="sketch-book-modal tutorial-book-modal" style="max-width:780px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px dashed var(--ink-primary); padding-bottom:8px;">
+        <h3 class="sketch-title" style="margin:0; display:flex; align-items:center; gap:8px;">
+          <span data-icon="book" data-size="24"></span>
+          <span>Field Tutorial</span>
+        </h3>
+        <button class="paper-btn btn-mini btn-danger" id="btn-close-tutorial">
+          <span data-icon="close" data-size="15"></span>
+          <span>Close</span>
+        </button>
+      </div>
+      <div class="tutorial-manual-content">
+        <section>
+          <h4>Movement</h4>
+          <p>Move with <code>WASD</code> or the arrow keys. Press <code>Space</code> to dash; a well-timed dash briefly avoids damage. Select hotbar items with <code>1-8</code> or the mouse wheel.</p>
+        </section>
+        <section>
+          <h4>Foraging</h4>
+          <p>Left-click nearby trees, rocks, reeds, and berry bushes to gather supplies. Bare hands work, but the hatchet is faster on trees and the pickaxe is faster on stone. Walk over dropped supplies to collect them.</p>
+        </section>
+        <section>
+          <h4>Crafting</h4>
+          <p>Press <code>C</code> to open the sketchbook and satchel. Craft basic gear from gathered materials. Workbenches unlock advanced recipes; a lit campfire cooks food and smelts ore. Click inventory slots to move or swap items.</p>
+        </section>
+        <section>
+          <h4>Survival</h4>
+          <p>Hunger drains over time. Food restores hunger; roasted meat also restores health and warmth. Night, rain, and colder biomes drain warmth. A lit campfire or warming equipment helps you recover. Dawn and dusk are short transition periods before the temperature shifts.</p>
+        </section>
+        <section>
+          <h4>Combat</h4>
+          <p>Face a target with the cursor and left-click to attack. Attacks have a recovery cooldown; heavier gear hits harder but still takes time between swings. Bows need arrows. Keep stamina for dashes, and use <code>E</code> near structures to interact.</p>
+        </section>
+        <section>
+          <h4>Three Guardians</h4>
+           <p>Place a Field Workbench and craft two Tier I tools or weapons to complete Tier I. Then explore the Deep Forest, Rocky Highlands, and Shadow Mire for the Briar Sovereign, Stoneback Colossus, and Mire Warden shrines. Follow each marker on the radar.</p>
+           <p>Each shrine consumes one Aether Crystal to summon its guardian. Every guardian has two telegraphed attacks. Leave the marked danger shape or dash before impact; only one guardian can be active at a time.</p>
+           <p>Defeat all three guardians to complete the expedition. The tracker records your progress.</p>
+        </section>
+      </div>
+      <div class="tutorial-actions">
+        <button class="paper-btn btn-mini" id="btn-skip-first-tutorial">Skip Tutorial</button>
+        <button class="paper-btn btn-mini btn-success" id="btn-start-guided">
+          <span data-icon="sprout" data-size="16"></span>
+          <span>Start Guided Expedition</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sketch-modal-backdrop" id="modal-victory">
+    <div class="sketch-book-modal" style="max-width:520px; text-align:center;">
+      <h2 class="sketch-title" style="margin-top:0;">Expedition Complete</h2>
+      <p>You defeated the Briar Sovereign, Stoneback Colossus, and Mire Warden.</p>
+      <button class="paper-btn btn-success" id="btn-close-victory">Continue Exploring</button>
+    </div>
+  </div>
+
+  <!-- Game Over / Respawn Modal -->
+  <div class="sketch-modal-backdrop" id="modal-gameover">
+    <div class="sketch-book-modal" style="max-width:480px; text-align:center;">
+      <h2 class="sketch-title" style="color:var(--ink-crimson); margin-top:0; display:flex; align-items:center; justify-content:center; gap:8px;">
+        <span data-icon="quill" data-size="28"></span>
+        <span>Expedition Ended</span>
+      </h2>
+      <p id="gameover-summary" style="font-size:1.1rem;">You survived 1 day in the wilds.</p>
+      <div style="display:flex; gap:10px; justify-content:center; margin-top:14px; flex-wrap:wrap;">
+        <button class="paper-btn btn-success" id="btn-respawn-trailhead" style="display:inline-flex; align-items:center; gap:6px;">
+          <span data-icon="tent" data-size="18"></span>
+          <span>Return to Trailhead (Keep Gear)</span>
+        </button>
+        <button class="paper-btn btn-danger" id="btn-fresh-world-death" style="display:inline-flex; align-items:center; gap:6px;">
+          <span data-icon="sprout" data-size="18"></span>
+          <span>Fresh Expedition</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="inkbound_hand_drawn_sketchbook_survival_game.js" defer></script>
+</body>
+</html>
